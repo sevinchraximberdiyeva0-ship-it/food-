@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+  COURIER
+}
+
+enum OrderStatus {
+  NEW
+  PREPARING
+  READY
+  DELIVERING
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role
+  active       Boolean   @default(true)
+  isDemo       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  employee     Employee?
+  courier      Courier?
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Restaurant {
+  id           Int            @id @default(autoincrement())
+  demoKey      String?        @unique
+  name         String
+  phone        String
+  address      String
+  open         Boolean        @default(true)
+  isDemo       Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  employees    Employee[]
+  categories   Category[]
+  products     Product[]
+  orders       Order[]
+  couriers     Courier[]
+  reviews      Review[]
+  promotions   Promotion[]
+  workingHours WorkingHours[]
+}
+
+model Employee {
+  id           Int        @id @default(autoincrement())
+  userId       Int        @unique
+  restaurantId Int
+  user         User       @relation(fields: [userId], references: [id])
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  @@index([restaurantId])
+}
+
+model Category {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  name         String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  products     Product[]
+  @@unique([restaurantId, name])
+  @@unique([id, restaurantId])
+}
+
+model Product {
+  id           Int         @id @default(autoincrement())
+  restaurantId Int
+  categoryId   Int
+  name         String
+  price        Int
+  emoji        String      @default("🍽️")
+  available    Boolean     @default(true)
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id])
+  category     Category    @relation(fields: [categoryId, restaurantId], references: [id, restaurantId])
+  items        OrderItem[]
+  @@unique([id, restaurantId])
+  @@index([restaurantId, available])
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  restaurantId Int
+  customer     String
+  address      String
+  total        Int
+  status       OrderStatus @default(NEW)
+  version      Int         @default(1)
+  isDemo       Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id])
+  items        OrderItem[]
+  delivery     Delivery?
+  review       Review?
+  @@unique([id, restaurantId])
+  @@index([restaurantId, status, createdAt])
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  orderId      Int
+  productId    Int
+  name         String
+  price        Int
+  quantity     Int
+  order        Order    @relation(fields: [orderId, restaurantId], references: [id, restaurantId])
+  product      Product  @relation(fields: [productId, restaurantId], references: [id, restaurantId])
+  @@index([orderId, restaurantId])
+}
+
+model Courier {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  userId       Int        @unique
+  available    Boolean    @default(true)
+  user         User       @relation(fields: [userId], references: [id])
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  deliveries   Delivery[]
+  @@unique([id, restaurantId])
+  @@index([restaurantId, available])
+}
+
+model Delivery {
+  id           Int            @id @default(autoincrement())
+  restaurantId Int
+  orderId      Int            @unique
+  courierId    Int
+  status       DeliveryStatus @default(ASSIGNED)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  order        Order          @relation(fields: [orderId, restaurantId], references: [id, restaurantId])
+  courier      Courier        @relation(fields: [courierId, restaurantId], references: [id, restaurantId])
+  @@unique([orderId, restaurantId])
+  @@index([courierId, status])
+}
+
+model Review {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  orderId      Int        @unique
+  rating       Int
+  text         String
+  reply        String?
+  order        Order      @relation(fields: [orderId, restaurantId], references: [id, restaurantId])
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  @@unique([orderId, restaurantId])
+  @@index([restaurantId])
+}
+
+model Promotion {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  name         String
+  discount     Int
+  active       Boolean    @default(false)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  @@index([restaurantId])
+}
+
+model WorkingHours {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  weekday      Int
+  start        String
+  end          String
+  enabled      Boolean    @default(true)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  @@unique([restaurantId, weekday])
+}
