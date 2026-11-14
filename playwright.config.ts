@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests/browser', fullyParallel: false, workers: 1,
   use: { channel: 'chrome', headless: true, screenshot: 'only-on-failure', trace: 'retain-on-failure' },
   projects: [
-    { name: 'backend-ui', testMatch: 'backend.spec.ts', use: { baseURL: 'http://127.0.0.1:5178' } },
+    { name: 'backend-ui', testMatch: ['backend.spec.ts', 'admin.spec.ts'], use: { baseURL: 'http://127.0.0.1:5178' } },
     { name: 'local-demo', testMatch: 'demo.spec.ts', use: { baseURL: 'http://127.0.0.1:5179' } },
   ],
   webServer: [

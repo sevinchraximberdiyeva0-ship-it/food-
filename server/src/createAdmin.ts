@@ -1,12 +1,32 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { userInput } from './validation.js';
-import { hashPassword } from './security.js';
+import { bootstrapFirstAdmin, bootstrapStatus, BootstrapError } from './bootstrap.js';
 
-const input = userInput.parse({ email: process.env.ADMIN_EMAIL, name: process.env.ADMIN_NAME, password: process.env.ADMIN_PASSWORD });
-const db = new PrismaClient();
+const db = new PrismaClient({ log: [] });
 try {
-  // No public registration or default credentials; existing accounts are never overwritten.
-  await db.user.create({ data: { email: input.email, name: input.name, passwordHash: await hashPassword(input.password), role: 'ADMIN' }, select: { id: true } });
-  console.log('Administrator yaratildi. ADMIN_PASSWORD muhit qiymatini o‘chiring.');
-} finally { await db.$disconnect(); }
+  if (process.argv.includes('--check')) {
+    console.log(JSON.stringify({ ok: true, ...(await bootstrapStatus(db)), role: 'ADMIN', displayRole: 'SUPER_ADMIN' }));
+  } else if (process.argv.includes('--apply') && !process.stdin.isTTY) {
+    // Credentials arrive only through the local terminal launcher's private
+    // stdin pipe. Never read them from env vars, args, files, or HTTP requests.
+    let payload = '';
+    for await (const chunk of process.stdin) {
+      payload += chunk.toString();
+      if (Buffer.byteLength(payload) > 8192) throw new BootstrapError('INPUT_TOO_LARGE');
+    }
+    let input: unknown;
+    try { input = JSON.parse(payload); } catch { throw new BootstrapError('INVALID_INPUT'); }
+    payload = '';
+    await bootstrapFirstAdmin(db, input);
+    input = undefined;
+    console.log(JSON.stringify({ ok: true, created: true, role: 'ADMIN', displayRole: 'SUPER_ADMIN' }));
+  } else {
+    console.log(JSON.stringify({ ok: false, code: 'USE_LOCAL_BOOTSTRAP_TERMINAL' }));
+    process.exitCode = 1;
+  }
+} catch (error) {
+  const code = error instanceof BootstrapError ? error.code : 'BOOTSTRAP_CHECK_FAILED';
+  // Never expose raw Prisma/Zod exceptions, input, email, password, or DB URL.
+  console.log(JSON.stringify({ ok: false, code }));
+  process.exitCode = 1;
+} finally { await db.$disconnect().catch(() => {}); }

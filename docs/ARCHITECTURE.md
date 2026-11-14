@@ -2,7 +2,7 @@
 
 ## 2-bosqichdagi holat
 
-Mavjud React + TypeScript + Vite va CSS saqlandi. Alohida `server/` Node.js + TypeScript + Express modulli monolit qo‘shildi. Prisma PostgreSQL bilan ishlaydi. Haqiqiy bazaga ulanish ushbu kompyuterda mavjud emas; ishlash holati [VERIFICATION.md](VERIFICATION.md) da.
+Mavjud React + TypeScript + Vite va CSS saqlandi. Alohida `server/` Node.js + TypeScript + Express modulli monolit qo‘shildi. Prisma PostgreSQL 18.7 bilan ishlaydi. Lokal `tezkor_demo` bazasi, migratsiyalar va frontend orqali API aloqasi tekshirilgan; natijalar [VERIFICATION.md](VERIFICATION.md) da.
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,7 @@ Frontend `usePlatform` backend yoki aniq yoqilgan lokal demo rejimini boshqaradi
 
 ## Baza
 
-`User`, `Restaurant`, `Employee`, `Category`, `Product`, `Order`, `OrderItem`, `Courier`, `Delivery`, `Review`, `Promotion`, `WorkingHours` va `Session`.
+`User`, `Restaurant`, `Employee`, `Category`, `Product`, `Order`, `OrderItem`, `Courier`, `Delivery`, `Review`, `Promotion`, `WorkingHours`, `Session` va `PlatformBootstrap` (14 model).
 
 - Employee va Courier User bilan bittadan bog‘lanadi; har biri bitta restoranga tegishli. ADMIN platforma bo‘ylab ishlaydi.
 - Har tenant so‘rovi autentifikatsiyadan olingan restaurantId bilan cheklanadi.
@@ -36,6 +36,10 @@ Frontend `usePlatform` backend yoki aniq yoqilgan lokal demo rejimini boshqaradi
 ## Ruxsat va sessiya
 
 ADMIN restoran/hisob yaratadi. EMPLOYEE o‘z restoranini boshqaradi. COURIER faqat o‘z faol topshiriqlarini va shaxsiy ma’lumotlari yashirilgan bo‘sh READY takliflarini ko‘radi. Qabuldan keyin manzil ochiladi. Server body’dan rol yoki xodimning restoranini qabul qilmaydi.
+
+`ADMIN` mavjud platforma SUPER ADMIN vakolatini beradi; rol nomlarini o‘zgartirish yoki eski hisoblarni ko‘tarish kerak emas. Birinchi haqiqiy hisob faqat tasdiqlangan lokal bootstrapdan yaratiladi: private stdin, scrypt, READ COMMITTED transaction, pg_advisory_xact_lock, mavjud ADMIN tekshiruvi va doimiy PlatformBootstrap singleton receipt. Hisob va receipt bir tranzaksiyada; receipt hisob o‘chirilishi bilan o‘chmaydi. Oddiy HTTP endpoint ADMIN yaratolmaydi. Yangi metadata migratsiyasi faqat jadval qo‘shadi. Tafsilotlar [ADMIN_BOOTSTRAP.md](ADMIN_BOOTSTRAP.md) da.
+
+Frontenddagi `AdminPanel` restoran mavjud bo‘lmasa ham kirishni ta’minlaydi. Restoran/xodim/kuryer yaratish, hisoblarni faollashtirish/nofaol qilish faqat ADMIN uchun; faollikni o‘chirish sessiyalarni bekor qiladi. Ishchi hisoblar boshqaruv API’si ADMIN hisoblarini tanlamaydi va rol maydonini qabul qilmaydi.
 
 Parollar scrypt + tasodifiy salt; sessiya tasodifiy 256-bit token, DB’da SHA-256 xesh. HttpOnly/SameSite/production Secure cookie, 8 soat expiry, login rotatsiya va logout revocation. Rol, active va tenant har so‘rovda qayta olinadi. Zod, Helmet, JSON hajm limiti, login rate limit, CSRF custom header + origin tekshiruvi va no-store javoblar bor. Sirlar frontendga uzatilmaydi.
 

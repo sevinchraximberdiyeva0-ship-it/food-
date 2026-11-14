@@ -12,4 +12,8 @@
 .login-card { width: min(460px, 100%); padding: 32px; }
 .login-card h1 { font-size: 24px; display: flex; align-items: center; gap: 10px; margin-top: 28px; }
 .api-error { color: #a6273a; background: #fff0f2; justify-content: space-between; }
+.admin-workspace main { max-width: 1400px; padding-bottom: 32px; }
+.admin-workspace .form-card { max-width: none; }
+.admin-workspace .select-control { margin-top: 18px; }
+.admin-return { position: fixed; bottom: 12px; left: 18px; z-index: 60; }
 button:disabled { opacity: .55; cursor: not-allowed; }

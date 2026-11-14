@@ -33,7 +33,10 @@ export function usePlatform() {
     setLoading(true); setError('');
     try {
       const who = await api<CurrentUser>('/me'); setUser(who);
-      if (who.role === 'ADMIN') setRestaurants(await api('/restaurants'));
+      if (who.role === 'ADMIN') {
+        const list = await api<{ id: number; name: string }[]>('/restaurants'); setRestaurants(list);
+        if (list.length === 0) { updateState(empty); setReady(true); return; }
+      }
       await refresh();
     } catch (cause) {
       if (cause instanceof HttpError && cause.status === 401) { setUser(null); setReady(false); }
@@ -77,7 +80,8 @@ export function usePlatform() {
     let saved = false;
     try {
       const separator = path.includes('?') ? '&' : '?';
-      await api(`${path}${separator}restaurantId=${state.restaurantId}`, method, body); saved = true;
+      await api(state.restaurantId ? `${path}${separator}restaurantId=${state.restaurantId}` : path, method, body); saved = true;
+      if (user?.role === 'ADMIN') setRestaurants(await api('/restaurants'));
       await refresh(); return true;
     } catch (cause) {
       if (cause instanceof HttpError && cause.status === 401) { setUser(null); setReady(false); updateState(empty); }
@@ -88,9 +92,9 @@ export function usePlatform() {
     } finally { busy.current = false; setPending(false); }
   }
   async function selectRestaurant(id: number) {
-    if (busy.current) return;
+    if (busy.current) return false;
     generation.current++; restaurantId.current = id; updateState(empty); setReady(false); setLoading(true);
-    try { await refresh(); setError(''); } catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
+    try { await refresh(); setError(''); return true; } catch (cause) { setError((cause as Error).message); return false; } finally { setLoading(false); }
   }
   function setState(value: SetStateAction<AppState>) {
     // Local mutations are reserved for the explicitly enabled standalone demo.

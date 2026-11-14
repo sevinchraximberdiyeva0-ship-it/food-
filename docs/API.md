@@ -34,7 +34,7 @@ Login limit: IP uchun 20 so‘rov / 15 daqiqa; umumiy API: 300 / daqiqa. Limit x
 
 ## Rollar va tenant
 
-- `ADMIN`: barcha restoranlar, yangi restoran va xodim/kuryer hisoblari yaratish.
+- `ADMIN`: platforma SUPER ADMIN vakolati; barcha restoranlar, yangi restoran va xodim/kuryer hisoblari yaratish/faolligini boshqarish. `SUPER_ADMIN` alohida enum qiymati emas.
 - `EMPLOYEE`: faqat o‘z restoranidagi buyurtmalar, menyu va sozlamalar.
 - `COURIER`: faqat o‘z topshiriqlari; o‘z restoranidagi biriktirilmagan READY buyurtmalarni qabul qilish. Qabul qilguncha mijoz ismi/manzili yashiriladi.
 
@@ -58,6 +58,8 @@ Xodim va kuryer uchun restoran identifikatori hisob bog‘lanishidan olinadi; UR
 | PATCH | /restaurants/:id/promotions/:promotionId | Admin/xodim; `{active: boolean}` |
 | POST | /restaurants/:id/employees | Faqat admin; `{email,name,password}` |
 | POST | /restaurants/:id/couriers | Faqat admin; `{email,name,password}` |
+| GET | /restaurants/:id/accounts | Faqat admin; shu restoranning EMPLOYEE/COURIER hisoblari, maks. 100, xeshlarsiz |
+| PATCH | /restaurants/:id/accounts/:userId | Faqat admin; `{active:boolean}`; role o‘zgartirilmaydi, ADMIN hisoblari qabul qilinmaydi |
 | GET | /products | Admin/xodim; cursor bilan katalog |
 | POST | /products | Admin/xodim; `{name,price,category,emoji?,available?}` |
 | PATCH | /products/:id | Admin/xodim; yuqoridagi maydonlar qisman |
@@ -73,6 +75,8 @@ Xodim va kuryer uchun restoran identifikatori hisob bog‘lanishidan olinadi; UR
 | POST | /courier/me/availability | Kuryer; `{available: boolean}`, faol yetkazish paytida 409 |
 
 Hisob yaratish paroli 12–200 belgi. Email unique, kichik harfga o‘tkaziladi. Narxlar butun so‘m (UZS), 1000–10000000, miqdor 1–100, buyurtmada 1–50 element. Yangi restoranga yetti kunlik 09:00–23:00 boshlang‘ich jadvali yaratiladi; PUT bilan tahrirlanadi. Soat/promo endpointlari yozuvlarni saqlaydi, narxlash va avtomatik jadval schedulerini yoqmaydi. Promo va sharh yaratish hozircha ommaviy API orqali mavjud emas.
+
+Hisobni nofaol qilish uning sessiyalarini bekor qiladi. Faol delivery bor kuryerni nofaol qilish 409 ACTIVE_DELIVERY. Hisob roli faqat serverdagi employee/courier endpointidan olinadi; body’da role/passwordHash/isDemo yuborish 400. SUPER ADMIN uchun HTTP yaratish yoki bootstrap endpointi mavjud emas: bir martalik lokal terminal mexanizmi [ADMIN_BOOTSTRAP.md](ADMIN_BOOTSTRAP.md) da. Bo‘sh platformada ADMIN UI restoranlar ro‘yxati bo‘sh bo‘lsa `/state` so‘ramay, platforma boshqaruvini ko‘rsatadi.
 
 `GET /orders?limit=25&cursor=100&status=READY&restaurantId=1`: id kamayish tartibida, cursor’dan kichik id’lar. `GET /products?limit=25&cursor=5&restaurantId=1`: id oshish tartibida, cursor’dan katta id’lar. `limit`: 1–100. `nextCursor` qolgan sahifa bor bo‘lsa oxirgi qaytgan id, aks holda null. UI qidiruvi yuklangan snapshot ustida lokal ishlaydi.
 

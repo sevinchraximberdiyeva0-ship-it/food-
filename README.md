@@ -14,7 +14,35 @@ Mavjud React 19 + TypeScript + Vite, komponentlar va CSS saqlangan. `server/` ic
 
 Node.js 22.12+ yoki 24 LTS, npm, PostgreSQL 17 yoki Docker Desktop + Compose. Ushbu sessiyada Node 26.13.1 bilan tekshirildi.
 
-**Ushbu kompyuterdagi cheklov:** Docker/psql topilmadi va `127.0.0.1:5432` ga ulanish `P1001` bilan tugadi. Shuning uchun migratsiya, seed va PostgreSQL integratsiya testlari bu muhitda bajarilgan deb hisoblanmaydi. Sxema, SQL migratsiyalar, seed, Compose va haqiqiy baza uchun testlar tayyorlangan. Brauzer testlari API javoblarini taqlid qiladi; ular haqiqiy baza sinovi emas.
+**Avvalgi tekshiruv (2026-11-13):** PostgreSQL mavjud bo‘lmagani uchun ulanish `P1001` bilan tugagan edi. 2026-11-14 kuni foydalanuvchi PostgreSQL 18 o‘rnatganini bildirdi. Lokal parolni xavfsiz sozlash uchun quyidagi yo‘ldan foydalaning. Seed va haqiqiy PostgreSQL integratsiya testlari alohida bajariladi; brauzer mock testlari ularning o‘rnini bosmaydi.
+
+## O‘rnatilgan PostgreSQL bilan xavfsiz sozlash (Windows)
+
+`postgres` foydalanuvchisi, `127.0.0.1:5432`, mavjud `tezkor_demo` bazasi uchun:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup-postgres.ps1
+```
+
+Parolni faqat shu terminaldagi yashirin so‘rovga kiriting. Skript:
+
+- Git’da `server/.env` va vaqtinchalik maxfiy fayllar kuzatilmayotganini tekshiradi.
+- PostgreSQL parolidagi maxsus belgilarni URL-encode qiladi; parolni terminal/chat/logga chiqarmaydi.
+- Avval haqiqiy baza va foydalanuvchini tekshiradi, so‘ng `server/.env` dagi faqat `DATABASE_URL` ni yangilaydi; boshqa sozlamalarni saqlaydi.
+- `prisma validate`, `generate`, **migrate deploy**, `migrate status` va yakuniy ulanish/sxema tekshiruvini bajaradi.
+- Reset, `db push`, seed, ma’lumot o‘chirish yoki Git push bajarmaydi. Mavjud jadvallar migratsiya tarixiga mos kelmasa, reset o‘rniga to‘xtaydi.
+
+`server/.env` hali yo‘q bo‘lsa, skript uni `server/.env.example` asosida yaratadi. Uni chatga joylamang. Sirlar saqlanmaydigan natija `server/.postgres-setup-result.json` ga yoziladi; bu fayl ham Git’dan chiqarilgan.
+
+2026-11-14 lokal tekshiruv: PostgreSQL **18.7**, `tezkor_demo`, ikkala mavjud migratsiya, 13 model jadvali va faol kuryer indeksi muvaffaqiyatli tekshirildi. Schema va migratsiya fayllari o‘zgartirilmadi; seed/reset bajarilmadi.
+
+Keyingi ulanish tekshiruvi:
+
+```powershell
+npm.cmd run db:check
+```
+
+Ushbu buyruq faqat baza nomi/versiyasi, foydalanuvchi, jadval nomlari va migratsiya holatini chiqaradi; URL, parol va foydalanuvchilar yozuvlarini chiqarmaydi.
 
 ## Lokal ishga tushirish (PowerShell)
 
@@ -79,18 +107,43 @@ Muqobil: [PostgreSQL Windows installer](https://www.postgresql.org/download/wind
 
 Server orqali menyu mavjudligi, yangi taom, restoran nomi/telefoni/ochiqligi, ish jadvali va aksiya holati saqlanadi. Sharhlar va xodimlar bazadan o‘qiladi. Admin restoran tanlay oladi. Restoran/buyurtma yaratish va hisoblar qo‘shish API orqali mavjud; alohida mijoz checkout ilovasi yaratilmagan.
 
-## Haqiqiy bazada birinchi administrator
+## Birinchi haqiqiy SUPER ADMIN
 
-Demo seed’ni bajarmang. Migratsiyadan keyin xavfsiz mahalliy muhit orqali `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD` belgilang va:
+Mavjud `ADMIN` — platforma SUPER ADMIN roli; schema enum va eski hisoblar saqlangan. Birinchi hisob yaratish uchun loyiha egasining alohida tasdig‘i kerak. Hozircha haqiqiy hisob yaratilmagan.
+
+Read-only holat tekshiruvi:
 
 ```powershell
-npm.cmd run admin:create --prefix server
-Remove-Item Env:ADMIN_PASSWORD
+npm.cmd run admin:status
 ```
 
-Bu buyruq mavjud hisobni o‘zgartirmaydi. Restoran va xodim/kuryer hisoblarini autentifikatsiyadan keyin admin API orqali yaratadi; ommaviy ro‘yxatdan o‘tish yo‘q.
+Faqat tasdiqdan keyin:
+
+```powershell
+npm.cmd run admin:bootstrap
+```
+
+Email/ism va yashirin parol faqat lokal terminalda kiritiladi; sirlar argument, muhit yoki `.env` ga yozilmaydi. Xesh mavjud scrypt mexanizmi bilan saqlanadi. Advisory lock + atomar User/PlatformBootstrap yozuvi qayta va parallel bootstrapni yopadi; boshqa ADMIN yoki doimiy belgi mavjud bo‘lsa yaratish rad etiladi. Eski `admin:create` ham shu himoyalangan yo‘lga yo‘naltirilgan, `ADMIN_*` muhit orqali yaratish olib tashlangan.
+
+Login’dan so‘ng restoran hali yo‘q bo‘lsa ham SUPER ADMIN paneli ochiladi. Restoran yaratish, restoran paneliga o‘tish, xodim/kuryer qo‘shish va faolligini boshqarish mavjud. Oddiy hisoblar bu API/panelga kira olmaydi va boshqa ADMIN yarata olmaydi. To‘liq ko‘rib chiqiladigan amallar, cheklovlar va testlar: [ADMIN_BOOTSTRAP.md](docs/ADMIN_BOOTSTRAP.md). Yangi metadata migratsiyasi bilan 13 ta eski modelga PlatformBootstrap qo‘shilgan, jami 14 ta.
 
 ## Tekshiruvlar
+
+Ishlayotgan lokal PostgreSQL uchun ma’lumotni saqlamaydigan API tekshiruvi:
+
+```powershell
+npm.cmd run verify:api
+```
+
+Bu tekshiruv faqat `127.0.0.1/tezkor_demo` bilan ishlaydi. Vaqtinchalik test hisob/restoran/mahsulot/kuryer yozuvlari **bitta rollback tranzaksiyasida** tekshiriladi va saqlanmaydi. Buyurtma yaratilmaydi yoki o‘zgartirilmaydi; seed/reset/DELETE bajarilmaydi. Haqiqiy API orqali buyurtma yaratish yoki yetkazish oqimini to‘liq tekshirish uchun alohida test baza zarur.
+
+Backend va frontend ishlab turganda haqiqiy brauzer/API ulanishini tekshirish:
+
+```powershell
+npm.cmd run test:live
+```
+
+Bu testlar API’ni mock qilmaydi: haqiqiy health, anonim ruxsat tekshiruvi va noto‘g‘ri loginni sinaydi. Bo‘sh bazada ishga tushish uchun dastlabki administrator hisobi kerak; avtomatik demo hisob yoki restoran yaratilmaydi.
 
 ```powershell
 npm.cmd test

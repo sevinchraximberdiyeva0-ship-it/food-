@@ -241,6 +241,26 @@ export function createApp(db: PrismaClient, options: Options) {
       res.status(201).json({ data: user });
     });
   }
+  router.get('/restaurants/:id/accounts', async (req, res) => {
+    admin(actor(res)); const restaurantId = v.id.parse(req.params.id);
+    const rows = await db.user.findMany({
+      where: { role: { in: ['EMPLOYEE', 'COURIER'] }, OR: [{ employee: { restaurantId } }, { courier: { restaurantId } }] },
+      select: { id: true, name: true, email: true, role: true, active: true }, orderBy: { id: 'asc' }, take: 100,
+    });
+    res.json({ data: rows });
+  });
+  router.patch('/restaurants/:id/accounts/:userId', async (req, res) => {
+    admin(actor(res)); const restaurantId = v.id.parse(req.params.id); const userId = v.id.parse(req.params.userId);
+    const data = z.object({ active: z.boolean() }).strict().parse(req.body);
+    await serial(async tx => {
+      const user = await tx.user.findFirst({ where: { id: userId, role: { in: ['EMPLOYEE', 'COURIER'] }, OR: [{ employee: { restaurantId } }, { courier: { restaurantId } }] } });
+      if (!user) throw notFound();
+      if (!data.active && await tx.delivery.count({ where: { courier: { userId }, status: { in: ['ASSIGNED', 'PICKED_UP'] } } }) > 0) throw new ApiError(409, 'ACTIVE_DELIVERY', 'Avval kuryerning faol yetkazib berishini yakunlang.');
+      await tx.user.update({ where: { id: userId }, data });
+      if (!data.active) await tx.session.deleteMany({ where: { userId } });
+    });
+    res.json({ data: { saved: true } });
+  });
   router.use('/courier', (_req, res, next) => { if (actor(res).role !== 'COURIER' || !actor(res).courierId) throw new ApiError(403, 'FORBIDDEN', 'Kuryer hisobi bilan kiring.'); next(); });
   router.get('/courier/me/tasks', async (_req, res) => {
     const who = actor(res);

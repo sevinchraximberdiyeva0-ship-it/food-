@@ -15,6 +15,10 @@ const db = new PrismaClient();
 try {
   const passwordHash = await hashPassword(input.DEMO_PASSWORD);
   await db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(1865301, 1)`;
+    if (await tx.platformBootstrap.count() > 0 || await tx.user.count({ where: { role: 'ADMIN', isDemo: false } }) > 0) {
+      throw new Error('Haqiqiy administrator mavjud: demo seed taqiqlangan.');
+    }
     if (await tx.restaurant.findUnique({ where: { demoKey: 'phase2-a' } })) {
       console.log('Demo seed avval yaratilgan. Mavjud ma’lumot va parollar o‘zgartirilmadi.'); return;
     }

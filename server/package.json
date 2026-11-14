@@ -10,10 +10,15 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "db:generate": "prisma generate",
+    "db:check": "node scripts/check-postgres.mjs",
+    "verify:api": "tsx scripts/verify-live-api.ts",
     "db:migrate": "prisma migrate deploy",
     "db:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "admin:create": "tsx src/createAdmin.ts"
+    "admin:create": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../scripts/bootstrap-admin.ps1",
+    "admin:bootstrap": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../scripts/bootstrap-admin.ps1",
+    "admin:status": "tsx src/createAdmin.ts --check",
+    "admin:verify": "tsx scripts/verify-bootstrap-safety.ts"
   },
   "prisma": { "seed": "tsx prisma/seed.ts" },
   "overrides": { "@prisma/config": { "effect": "^3.20.0", "deepmerge-ts": "^8.0.0" } },

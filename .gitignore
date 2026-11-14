@@ -10,3 +10,5 @@ server/node_modules/
 server/dist/
 playwright-report/
 test-results/
+server/.postgres-setup-result.json
+server/.admin-bootstrap-result.json

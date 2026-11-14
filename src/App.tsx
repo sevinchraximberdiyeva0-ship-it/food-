@@ -4,6 +4,7 @@ import type { AppState, Order, Page } from './types';
 import { advanceOrder, assignCourier } from './domain/orders.mjs';
 import { usePlatform, type Platform } from './usePlatform';
 import Login from './Login';
+import AdminPanel from './AdminPanel';
 
 const money = (value: number) => new Intl.NumberFormat('uz-UZ').format(value);
 const navigation = [
@@ -20,10 +21,13 @@ const navigation = [
 ] as const;
 export default function App() {
   const platform = usePlatform();
+  const [adminView, setAdminView] = useState(true);
+  useEffect(() => { setAdminView(true); }, [platform.user?.id, platform.user?.role]);
   if (platform.loading && !platform.ready) return <div className="login-page" role="status">Serverga ulanmoqda…</div>;
   if (!platform.demo && !platform.user) return <Login platform={platform} />;
+  if (platform.user?.role === 'ADMIN' && adminView) return <AdminPanel platform={platform} openRestaurant={() => setAdminView(false)} />;
   if (!platform.ready) return <div className="login-page"><section className="card login-card"><p role="alert">{platform.error || 'Restoran ma’lumotlari topilmadi.'}</p><button className="button primary" onClick={() => void platform.refresh()}>Qayta urinish</button><button className="button secondary" onClick={() => void platform.logout()}>Chiqish</button></section></div>;
-  return <PartnerApp key={`${platform.user?.id ?? 'demo'}-${platform.state.restaurantId ?? 'local'}`} platform={platform} />;
+  return <>{platform.user?.role === 'ADMIN' && <div className="admin-return"><button className="button secondary" onClick={() => setAdminView(true)}>SUPER ADMIN paneliga qaytish</button></div>}<PartnerApp key={`${platform.user?.id ?? 'demo'}-${platform.state.restaurantId ?? 'local'}`} platform={platform} /></>;
 }
 
 function PartnerApp({ platform }: { platform: Platform }) {

@@ -53,6 +53,14 @@ model Session {
   @@index([expiresAt])
 }
 
+// Permanent singleton receipt: deleting/deactivating the user does not reopen
+// the first-admin bootstrap. Account recovery must be a separate explicit task.
+model PlatformBootstrap {
+  key            String   @id
+  createdAdminId Int
+  completedAt    DateTime @default(now())
+}
+
 model Restaurant {
   id           Int            @id @default(autoincrement())
   demoKey      String?        @unique

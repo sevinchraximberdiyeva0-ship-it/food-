@@ -101,3 +101,31 @@ test('invalid input and malformed JSON return 400; sensitive fields are not acce
   const res = await request(app).post('/api/v1/auth/login').set('X-Requested-With', 'TezkorPartner').set('Content-Type', 'application/json').send('{');
   assert.equal(res.status, 400); assert.equal(res.body.error.code, 'INVALID_JSON'); assert.equal(res.body.error.stack, undefined);
 });
+
+test('employees/couriers cannot list, create or deactivate platform-managed accounts', async () => {
+  for (const role of ['EMPLOYEE', 'COURIER'] as const) {
+    const { app } = fixture(role);
+    assert.equal((await request(app).get('/api/v1/restaurants/10/accounts').set('Cookie', cookie)).status, 403);
+    for (const path of ['/api/v1/restaurants/10/employees', '/api/v1/restaurants/10/couriers']) {
+      assert.equal((await request(app).post(path).set('Cookie', cookie).set('X-Requested-With', 'TezkorPartner').send({ role: 'ADMIN' })).status, 403);
+    }
+    assert.equal((await request(app).patch('/api/v1/restaurants/10/accounts/1').set('Cookie', cookie).set('X-Requested-With', 'TezkorPartner').send({ active: false })).status, 403);
+    const me = await request(app).get('/api/v1/me').set('Cookie', cookie);
+    assert.equal(me.body.data.role, role);
+  }
+});
+test('even an admin cannot grant ADMIN through employee/courier APIs or account PATCH', async () => {
+  const { app } = fixture('ADMIN');
+  const password = randomBytes(24).toString('hex');
+  for (const kind of ['employees', 'couriers']) {
+    const res = await request(app).post(`/api/v1/restaurants/10/${kind}`).set('Cookie', cookie).set('X-Requested-With', 'TezkorPartner').send({ name: 'Test', email: 'test@example.test', password, role: 'ADMIN' });
+    assert.equal(res.status, 400);
+  }
+  assert.equal((await request(app).patch('/api/v1/restaurants/10/accounts/1').set('Cookie', cookie).set('X-Requested-With', 'TezkorPartner').send({ active: true, role: 'ADMIN' })).status, 400);
+});
+test('no HTTP bootstrap or public registration endpoint is exposed', async () => {
+  const { app } = fixture();
+  for (const path of ['/api/v1/auth/bootstrap', '/api/v1/auth/register']) {
+    assert.equal((await request(app).post(path).set('Cookie', cookie).set('X-Requested-With', 'TezkorPartner').send({})).status, 404);
+  }
+});
